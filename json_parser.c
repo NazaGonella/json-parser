@@ -1,6 +1,7 @@
 #include "json_parser.h"
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 static void SkipWhitespace(FILE* fd);
@@ -18,16 +19,16 @@ int JSONParse(const char* path, JSONObject* obj) {
     int c = fgetc(fd);
     if (c == '{') {
         JSONParseObject(fd, obj);
-        return 0;
-    }
-    else if (c == EOF) {
-        return 0;
+        printf("pair: \n");
+        printf("key: %s\n", obj->pairs[0].key);
+        printf("value: %s\n", obj->pairs[0].value.value.string);
     }
     else {
         return -1;
     }
 
     fclose(fd);
+    return 0;
 }
 
 
@@ -57,7 +58,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
     int pairIndex = 0;
 
-    // obj->pairs = malloc(sizeof(JSONPair));
+    obj->pairs = malloc(sizeof(JSONPair));
 
     for (;;) {
         SkipWhitespace(fd);
@@ -73,12 +74,14 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             case '"':
                 if (inString) {
                     buffer[bufferLen] = '\0';
-                    if (!inValue) {
-                        printf("key: %s\n", buffer);
+
+                    if (inValue) {
+                        obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
+                        obj->pairs[pairIndex].value.value.string = strdup(buffer);
                     } else {
-                        printf("value: %s\n\n", buffer);
-                        inValue = false;
+                        obj->pairs[pairIndex].key = strdup(buffer);
                     }
+
                     bufferLen = 0;
                     inString = false;
                 }
@@ -93,6 +96,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             
             case ',':
                 pairIndex++;
+                obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
                 break;
             
             default:
