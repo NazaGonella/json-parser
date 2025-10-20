@@ -47,4 +47,4 @@ struct JSONPair {
 };
 
 
-void JSONParse(const char* path, JSONObject* obj);
+int JSONParse(const char* path, JSONObject* obj);
