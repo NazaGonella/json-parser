@@ -14,6 +14,7 @@ static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
+static void JSONPrintObject(JSONObject* obj, int indent);
 
 
 int JSONParse(const char* path, JSONObject* obj) {
@@ -26,19 +27,23 @@ int JSONParse(const char* path, JSONObject* obj) {
     int c = fgetc(fd);
     if (c == '{') {
         JSONParseObject(fd, obj);
-        for (int i = 0; i < obj->count; i++){
-            JSONPair *pair = &obj->pairs[i];
-            printf("pair %d: \n", i);
-            printf("key: %s\n", pair->key);
-            switch (pair->value.type) {
-                case JSON_VALUE_STRING  : printf("value: %s\n\n", pair->value.value.string); break;
-                case JSON_VALUE_NUMBER  : printf("value: %f\n\n", pair->value.value.number); break;;
-                case JSON_VALUE_OBJECT  : break;
-                case JSON_VALUE_ARRAY   : break;
-                case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
-                case JSON_VALUE_NULL    : printf("value: null\n\n"); break;
-            }
-        }
+        // for (int i = 0; i < obj->count; i++){
+        //     JSONPair *pair = &obj->pairs[i];
+        //     printf("pair %d: \n", i);
+        //     printf("key: %s\n", pair->key);
+        //     switch (pair->value.type) {
+        //         case JSON_VALUE_STRING  : printf("value: %s\n\n", pair->value.value.string); break;
+        //         case JSON_VALUE_NUMBER  : printf("value: %f\n\n", pair->value.value.number); break;;
+        //         case JSON_VALUE_OBJECT  : break;
+        //         case JSON_VALUE_ARRAY   : break;
+        //         case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
+        //         case JSON_VALUE_NULL    : printf("value: null\n\n"); break;
+        //     }
+        // }
+        printf("{\n");
+        JSONPrintObject(obj, 1);
+        printf("}\n");
+
     }
     else {
         fclose(fd);
@@ -151,7 +156,10 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // Object
             case '{' : {
-                JSONParseObject(fd, obj);
+                JSONObject newObj = {};
+                JSONParseObject(fd, &newObj);
+                obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
+                obj->pairs[pairIndex].value.value.object = newObj;
             } break;
 
             // Array
@@ -324,3 +332,39 @@ static bool JSONParseNull(FILE* fd) {
     return true;
 }
 
+
+static void JSONPrintObject(JSONObject* obj, int indent) {
+    for (int i = 0; i < obj->count; i++) {
+        for (int j = 0; j < indent; j++) printf("  ");
+        JSONPair* pair = &obj->pairs[i];
+        printf("\"%s\": ", pair->key);
+
+        switch (pair->value.type) {
+            case JSON_VALUE_STRING:
+                printf("\"%s\"", pair->value.value.string);
+                break;
+            case JSON_VALUE_NUMBER:
+                printf("%g", pair->value.value.number);
+                break;
+            case JSON_VALUE_BOOL:
+                printf(pair->value.value.boolean ? "true" : "false");
+                break;
+            case JSON_VALUE_NULL:
+                printf("null");
+                break;
+            case JSON_VALUE_OBJECT:
+                printf("{\n");
+                JSONPrintObject(&pair->value.value.object, indent + 1);
+                for (int j = 0; j < indent; j++) printf("  ");
+                printf("}");
+                break;
+            default:
+                printf("<?>");
+                break;
+        }
+
+        if (i < obj->count - 1)
+            printf(",");
+        printf("\n");
+    }
+}
