@@ -1,5 +1,6 @@
 #include "json_parser.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -9,7 +10,8 @@ static size_t JSONStringLength(FILE* fd);   // does not care for escape sequence
 static size_t JSONNumberLength(FILE* fd);
 static void JSONParseObject(FILE* fd, JSONObject* obj);
 static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
-static void JSONParseNumber(FILE* fd, int* number, const size_t bufferSize);
+static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
+static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
 
@@ -193,16 +195,39 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             default: {
                 // Number
                 if (c == '-' || (c >= '0' && c <= '9')) {
-                    if (c >= '0' && c <= '9')
+                    int is_negative = (c == '-');
+                    if (!is_negative)
                         ungetc(c, fd);
-                    size_t numberLen = JSONNumberLength(fd);
-                    int number = 0;
-                    JSONParseNumber(fd, &number, numberLen);
-                    if (c == '-') {
-                        number = -number;
+
+                    int next = fgetc(fd);
+                    if (next == '0') {
+                        int peek = fgetc(fd);
+                        if (peek == '.') {
+                            size_t numberLen = JSONNumberLength(fd);
+                            double number = 0;
+
+                            JSONParseFraction(fd, &number, numberLen);
+                            if (is_negative) number = -number;
+
+                            obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                            obj->pairs[pairIndex].value.value.number = number;
+                        } else {
+                            ungetc(peek, fd);
+
+                            obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                            obj->pairs[pairIndex].value.value.number = is_negative ? -0.0 : 0.0;
+                        }
+                    } else {
+                        ungetc(next, fd);
+                        size_t numberLen = JSONNumberLength(fd);
+                        int number = 0;
+
+                        JSONParseInteger(fd, &number, numberLen);
+                        if (is_negative) number = -number;
+
+                        obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                        obj->pairs[pairIndex].value.value.number = number;
                     }
-                    obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
-                    obj->pairs[pairIndex].value.value.number = number;
                 }
             } break;
         }
@@ -248,7 +273,7 @@ static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
 }
 
 
-static void JSONParseNumber(FILE* fd, int* number, const size_t bufferSize) {
+static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize) {
     int result = 0;
     for (size_t i = 0; i < bufferSize; i++) {
         int c = fgetc(fd);
@@ -256,6 +281,22 @@ static void JSONParseNumber(FILE* fd, int* number, const size_t bufferSize) {
         int digit = c - '0';
         result = result * 10 + digit;
     }
+    *number = result;
+}
+
+
+static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize) {
+    double result = 0.0;
+    double divisor = 10.0;
+
+    for (size_t i = 0; i < bufferSize; i++) {
+        int c = fgetc(fd);
+        if (c < '0' || c > '9') break;
+        int digit = c - '0';
+        result += digit / divisor;
+        divisor *= 10.0;
+    }
+
     *number = result;
 }
 
@@ -288,3 +329,4 @@ static bool JSONParseNull(FILE* fd) {
 
     return true;
 }
+
