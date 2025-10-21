@@ -5,7 +5,7 @@
 
 
 static void SkipWhitespace(FILE* fd);
-static size_t JSONStringLength(FILE* fd);
+static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static void JSONParseObject(FILE* fd, JSONObject* obj);
 static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize);
 
@@ -73,19 +73,21 @@ static size_t JSONStringLength(FILE* fd) {
 static void JSONParseObject(FILE* fd, JSONObject* obj) {
     int c;
 
-    char buffer[1024];
-    int bufferLen = 0;
-
     bool inValue = false;
 
-    int pairIndex = 0;
-    obj->pairs = malloc(sizeof(JSONPair));
+    int pairIndex = obj->count;
+    if (obj->count == 0)
+        obj->pairs = malloc(sizeof(JSONPair));
+    else {
+        obj->pairs = realloc(obj->pairs, obj->count + 1);
+    }
 
     for (;;) {
         SkipWhitespace(fd);
         c = fgetc(fd);
 
         switch (c) {
+            // End of object
             case '}': {
                 if (pairIndex == 0 && obj->pairs[0].key == NULL) {
                     free(obj->pairs);
@@ -99,6 +101,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
             } return;
 
+            // String
             case '"': {
                 size_t bufferSize = JSONStringLength(fd);
                 char buffer[bufferSize+1];  // +1 for null terminator
@@ -112,6 +115,31 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
                     obj->pairs[pairIndex].key = strdup(buffer);
                 }
             } break;
+
+            // Object
+            case '{' : {
+                JSONParseObject(fd, obj);
+            } break;
+
+            // Array
+            case '[' : {
+
+            } break;
+
+            // true
+            case 't' : {
+
+            }
+
+            // false
+            case 'f' : {
+
+            }
+
+            // null
+            case 'n' : {
+
+            }
             
             case ':': {
                 inValue = true;
