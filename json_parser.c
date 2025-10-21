@@ -19,9 +19,12 @@ int JSONParse(const char* path, JSONObject* obj) {
     int c = fgetc(fd);
     if (c == '{') {
         JSONParseObject(fd, obj);
-        printf("pair: \n");
+        printf("pair 0: \n");
         printf("key: %s\n", obj->pairs[0].key);
         printf("value: %s\n", obj->pairs[0].value.value.string);
+        printf("pair 1: \n");
+        printf("key: %s\n", obj->pairs[1].key);
+        printf("value: %s\n", obj->pairs[1].value.value.string);
     }
     else {
         return -1;
@@ -57,7 +60,6 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
     bool inValue = false;
 
     int pairIndex = 0;
-
     obj->pairs = malloc(sizeof(JSONPair));
 
     for (;;) {
@@ -66,6 +68,12 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
         switch (c) {
             case '}':
+                if (pairIndex == 0 && obj->pairs[0].key == NULL) {
+                    free(obj->pairs);
+                    obj->pairs = NULL;
+                } else {
+                    obj->count = pairIndex + 1;
+                }
                 return;
 
             case EOF:
@@ -97,6 +105,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             case ',':
                 pairIndex++;
                 obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
+                inValue = false;
                 break;
             
             default:
