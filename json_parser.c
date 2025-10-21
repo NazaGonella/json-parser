@@ -91,7 +91,7 @@ static size_t JSONNumberLength(FILE* fd) {
     int c;
 
     while ((c = fgetc(fd)) != EOF) {
-        if (c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
+        if (c == '.' || c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
             break;
         }
         bufferLen++;
@@ -195,39 +195,33 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             default: {
                 // Number
                 if (c == '-' || (c >= '0' && c <= '9')) {
-                    int is_negative = (c == '-');
-                    if (!is_negative)
-                        ungetc(c, fd);
+                    double result = 0;
 
-                    int next = fgetc(fd);
-                    if (next == '0') {
-                        int peek = fgetc(fd);
-                        if (peek == '.') {
-                            size_t numberLen = JSONNumberLength(fd);
-                            double number = 0;
-
-                            JSONParseFraction(fd, &number, numberLen);
-                            if (is_negative) number = -number;
-
-                            obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
-                            obj->pairs[pairIndex].value.value.number = number;
-                        } else {
-                            ungetc(peek, fd);
-
-                            obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
-                            obj->pairs[pairIndex].value.value.number = is_negative ? -0.0 : 0.0;
-                        }
+                    bool isNegative = false;
+                    if (c == '-') {
+                        isNegative = true;
                     } else {
-                        ungetc(next, fd);
-                        size_t numberLen = JSONNumberLength(fd);
-                        int number = 0;
-
-                        JSONParseInteger(fd, &number, numberLen);
-                        if (is_negative) number = -number;
-
-                        obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
-                        obj->pairs[pairIndex].value.value.number = number;
+                        ungetc(c, fd);
                     }
+
+                    int integer = 0;
+                    int integerLen = JSONNumberLength(fd);
+                    JSONParseInteger(fd, &integer, integerLen);
+
+                    result += (double) integer;
+
+                    double fractionary = 0;
+                    int peek = fgetc(fd);
+                    if (peek != '.') {
+                        ungetc(peek, fd);
+                    } else {
+                        int fractionaryLen = JSONNumberLength(fd);
+                        JSONParseFraction(fd, &fractionary, fractionaryLen);
+                        result += fractionary;
+                    }
+
+                    obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                    obj->pairs[pairIndex].value.value.number = isNegative ? -result : result;
                 }
             } break;
         }
