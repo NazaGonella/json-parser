@@ -53,8 +53,10 @@ static void SkipWhitespace(FILE* fd) {
 
 
 static size_t JSONStringLength(FILE* fd) {
+    long pos = ftell(fd);           // save position
+
+    size_t bufferLen = 0;
     int c;
-    int bufferLen = 0;
 
     while ((c = fgetc(fd)) != EOF) {
         if (c == '"') {
@@ -62,6 +64,8 @@ static size_t JSONStringLength(FILE* fd) {
         }
         bufferLen++;
     }
+
+    fseek(fd, pos, SEEK_SET);       // restore position
     return bufferLen;
 }
 
@@ -69,7 +73,6 @@ static size_t JSONStringLength(FILE* fd) {
 static void JSONParseObject(FILE* fd, JSONObject* obj) {
     int c;
 
-    bool inString = false;
     char buffer[1024];
     int bufferLen = 0;
 
@@ -83,53 +86,46 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
         c = fgetc(fd);
 
         switch (c) {
-            case '}':
+            case '}': {
                 if (pairIndex == 0 && obj->pairs[0].key == NULL) {
                     free(obj->pairs);
                     obj->pairs = NULL;
                 } else {
                     obj->count = pairIndex + 1;
                 }
-                return;
+            } return;
 
-            case EOF:
-                return;
+            case EOF: {
 
-            case '"':
-                if (inString) {
-                    buffer[bufferLen] = '\0';
+            } return;
 
-                    if (inValue) {
-                        obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
-                        obj->pairs[pairIndex].value.value.string = strdup(buffer);
-                    } else {
-                        obj->pairs[pairIndex].key = strdup(buffer);
-                    }
+            case '"': {
+                size_t bufferSize = JSONStringLength(fd);
+                char buffer[bufferSize+1];  // +1 for null terminator
 
-                    bufferLen = 0;
-                    inString = false;
+                JSONParseString(fd, obj, buffer, bufferSize+1);
+
+                if (inValue) {
+                    obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
+                    obj->pairs[pairIndex].value.value.string = strdup(buffer);
+                } else {
+                    obj->pairs[pairIndex].key = strdup(buffer);
                 }
-                else {
-                    inString = true;
-                }
-                break;
+            } break;
             
-            case ':':
+            case ':': {
                 inValue = true;
-                break;
+            } break;
             
-            case ',':
+            case ',': {
                 pairIndex++;
                 obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
                 inValue = false;
-                break;
+            } break;
             
-            default:
-                if (inString) {
-                    buffer[bufferLen] = c;
-                    bufferLen++;
-                }
-                break;
+            default: {
+
+            } break;
         }
     }
 }
