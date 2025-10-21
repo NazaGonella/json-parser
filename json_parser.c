@@ -135,13 +135,36 @@ static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_
     int c;
 
     int bufferLen = 0;
+    bool escape = false;
 
     while ((c = fgetc(fd)) != EOF) {
-        if (c == '"') {
+        if (c == '"' && !escape) {
             buffer[bufferLen] = '\0';
             return;
         }
-        if (bufferLen < bufferSize - 1) buffer[bufferLen++] = c;
+
+
+        if (escape) {
+            switch (c) {
+                case '"':  c = '"';  break;
+                case '\\': c = '\\'; break;
+                case '/':  c = '/';  break;
+                case 'b':  c = '\b'; break;
+                case 'f':  c = '\f'; break;
+                case 'n':  c = '\n'; break;
+                case 'r':  c = '\r'; break;
+                case 't':  c = '\t'; break;
+            }
+            escape = false;
+        } else if (c == '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (bufferLen < bufferSize - 1)
+            buffer[bufferLen++] = c;
     }
+
+    buffer[bufferLen] = '\0';
 }
 
