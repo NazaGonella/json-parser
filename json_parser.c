@@ -20,12 +20,12 @@ int JSONParse(const char* path, JSONObject* obj) {
     int c = fgetc(fd);
     if (c == '{') {
         JSONParseObject(fd, obj);
-        printf("pair 0: \n");
-        printf("key: %s\n", obj->pairs[0].key);
-        printf("value: %s\n", obj->pairs[0].value.value.string);
-        printf("pair 1: \n");
-        printf("key: %s\n", obj->pairs[1].key);
-        printf("value: %s\n", obj->pairs[1].value.value.string);
+        for (int i = 0; i < obj->count; i++){
+            JSONPair *pair = &obj->pairs[i];
+            printf("pair %d: \n", i);
+            printf("key: %s\n", pair->key);
+            printf("value: %s\n\n", pair->value.value.string);
+        }
     }
     else {
         return -1;
