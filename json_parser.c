@@ -9,6 +9,7 @@ static size_t JSONStringLength(FILE* fd);   // does not care for escape sequence
 static void JSONParseObject(FILE* fd, JSONObject* obj);
 static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
+static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
 
 
 int JSONParse(const char* path, JSONObject* obj) {
@@ -31,11 +32,12 @@ int JSONParse(const char* path, JSONObject* obj) {
                 case JSON_VALUE_OBJECT  : break;
                 case JSON_VALUE_ARRAY   : break;
                 case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
-                case JSON_VALUE_NULL    : break;
+                case JSON_VALUE_NULL    : printf("value: null\n\n"); break;
             }
         }
     }
     else {
+        fclose(fd);
         return -1;
     }
 
@@ -152,7 +154,9 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // null
             case 'n' : {
+                JSONParseNull(fd);
 
+                obj->pairs[pairIndex].value.type = JSON_VALUE_NULL;
             } break;
             
             case ':': {
@@ -227,4 +231,15 @@ static bool JSONParseBoolean(FILE* fd, bool value) {
         return true;
     }
     return false;
+}
+
+
+static bool JSONParseNull(FILE* fd) {
+    int c;
+
+    if (fgetc(fd) != 'u') return false;
+    if (fgetc(fd) != 'l') return false;
+    if (fgetc(fd) != 'l') return false;
+
+    return true;
 }

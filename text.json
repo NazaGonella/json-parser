@@ -6,5 +6,8 @@
     "9" : "203829",
     "90a8d" : false,
     "eltru" : true,
-    "num" : "99999"
+    "num" : "99999",
+    "num2" : null,
+    "num3" : null,
+    "num4" : "99999"
 }
