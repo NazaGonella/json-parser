@@ -8,6 +8,7 @@ static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static void JSONParseObject(FILE* fd, JSONObject* obj);
 static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize);
+static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 
 
 int JSONParse(const char* path, JSONObject* obj) {
@@ -24,7 +25,14 @@ int JSONParse(const char* path, JSONObject* obj) {
             JSONPair *pair = &obj->pairs[i];
             printf("pair %d: \n", i);
             printf("key: %s\n", pair->key);
-            printf("value: %s\n\n", pair->value.value.string);
+            switch (pair->value.type) {
+                case JSON_VALUE_STRING  : printf("value: %s\n\n", pair->value.value.string); break;
+                case JSON_VALUE_NUMBER  : break;
+                case JSON_VALUE_OBJECT  : break;
+                case JSON_VALUE_ARRAY   : break;
+                case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
+                case JSON_VALUE_NULL    : break;
+            }
         }
     }
     else {
@@ -128,18 +136,24 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // true
             case 't' : {
+                JSONParseBoolean(fd, true);
 
-            }
+                obj->pairs[pairIndex].value.type = JSON_VALUE_BOOL;
+                obj->pairs[pairIndex].value.value.boolean = true;
+            } break;
 
             // false
             case 'f' : {
+                JSONParseBoolean(fd, true);
 
-            }
+                obj->pairs[pairIndex].value.type = JSON_VALUE_BOOL;
+                obj->pairs[pairIndex].value.value.boolean = false;
+            } break;
 
             // null
             case 'n' : {
 
-            }
+            } break;
             
             case ':': {
                 inValue = true;
@@ -196,3 +210,21 @@ static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_
     buffer[bufferLen] = '\0';
 }
 
+
+static bool JSONParseBoolean(FILE* fd, bool value) {
+    int c;
+
+    if (value == true) {
+        if (fgetc(fd) != 'r') return false;
+        if (fgetc(fd) != 'u') return false;
+        if (fgetc(fd) != 'e') return false;
+        return true;
+    } else if (value == false) {
+        if (fgetc(fd) != 'a') return false;
+        if (fgetc(fd) != 'l') return false;
+        if (fgetc(fd) != 's') return false;
+        if (fgetc(fd) != 'e') return false;
+        return true;
+    }
+    return false;
+}
