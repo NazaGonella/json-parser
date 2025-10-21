@@ -7,7 +7,8 @@
 static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static void JSONParseObject(FILE* fd, JSONObject* obj);
-static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize);
+static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
+static void JSONParseNumber(FILE* fd, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
 
@@ -116,7 +117,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
                 size_t bufferSize = JSONStringLength(fd);
                 char buffer[bufferSize+1];  // +1 for null terminator
 
-                JSONParseString(fd, obj, buffer, bufferSize+1);
+                JSONParseString(fd, buffer, bufferSize+1);
 
                 if (inValue) {
                     obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
@@ -177,7 +178,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 }
 
 
-static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize) {
+static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
     int c;
 
     int bufferLen = 0;
