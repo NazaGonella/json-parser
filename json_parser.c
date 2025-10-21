@@ -5,8 +5,9 @@
 
 
 static void SkipWhitespace(FILE* fd);
+static size_t JSONStringLength(FILE* fd);
 static void JSONParseObject(FILE* fd, JSONObject* obj);
-static void JSONParseString(FILE* fd, JSONObject* obj);
+static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize);
 
 
 int JSONParse(const char* path, JSONObject* obj) {
@@ -49,6 +50,21 @@ static void SkipWhitespace(FILE* fd) {
         }
     }
 }
+
+
+static size_t JSONStringLength(FILE* fd) {
+    int c;
+    int bufferLen = 0;
+
+    while ((c = fgetc(fd)) != EOF) {
+        if (c == '"') {
+            break;
+        }
+        bufferLen++;
+    }
+    return bufferLen;
+}
+
 
 static void JSONParseObject(FILE* fd, JSONObject* obj) {
     int c;
@@ -117,3 +133,19 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
         }
     }
 }
+
+
+static void JSONParseString(FILE* fd, JSONObject* obj, char* buffer, const size_t bufferSize) {
+    int c;
+
+    int bufferLen = 0;
+
+    while ((c = fgetc(fd)) != EOF) {
+        if (c == '"') {
+            buffer[bufferLen] = '\0';
+            return;
+        }
+        if (bufferLen < bufferSize - 1) buffer[bufferLen++] = c;
+    }
+}
+
