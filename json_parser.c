@@ -6,9 +6,10 @@
 
 static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
+static size_t JSONNumberLength(FILE* fd);
 static void JSONParseObject(FILE* fd, JSONObject* obj);
 static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
-static void JSONParseNumber(FILE* fd, const size_t bufferSize);
+static void JSONParseNumber(FILE* fd, int* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
 
@@ -29,7 +30,7 @@ int JSONParse(const char* path, JSONObject* obj) {
             printf("key: %s\n", pair->key);
             switch (pair->value.type) {
                 case JSON_VALUE_STRING  : printf("value: %s\n\n", pair->value.value.string); break;
-                case JSON_VALUE_NUMBER  : break;
+                case JSON_VALUE_NUMBER  : printf("value: %f\n\n", pair->value.value.number); break;;
                 case JSON_VALUE_OBJECT  : break;
                 case JSON_VALUE_ARRAY   : break;
                 case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
@@ -51,10 +52,10 @@ static void SkipWhitespace(FILE* fd) {
     int c;
     while ((c=fgetc(fd)) != EOF) {
         switch (c) {
-            case 9 : continue; break;       // Horizontal tab
-            case 10: continue; break;       // Linefeed
-            case 13: continue; break;       // Carriage return
-            case 32: continue; break;       // Space
+            case '\t': continue; break;       // Horizontal tab
+            case '\n': continue; break;       // Linefeed
+            case '\r': continue; break;       // Carriage return
+            case ' ' : continue; break;       // Space
             default:
                 ungetc(c, fd);
                 return;
@@ -81,12 +82,31 @@ static size_t JSONStringLength(FILE* fd) {
 }
 
 
+static size_t JSONNumberLength(FILE* fd) {
+    long pos = ftell(fd);           // save position
+
+    size_t bufferLen = 0;
+    int c;
+
+    while ((c = fgetc(fd)) != EOF) {
+        if (c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
+            break;
+        }
+        bufferLen++;
+    }
+
+    fseek(fd, pos, SEEK_SET);       // restore position
+    return bufferLen;
+}
+
+
 static void JSONParseObject(FILE* fd, JSONObject* obj) {
     int c;
 
     bool inValue = false;
 
     int pairIndex = obj->count;
+
     if (obj->count == 0)
         obj->pairs = malloc(sizeof(JSONPair));
     else {
@@ -171,7 +191,19 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
             } break;
             
             default: {
-
+                // Number
+                if (c == '-' || (c >= '0' && c <= '9')) {
+                    if (c >= '0' && c <= '9')
+                        ungetc(c, fd);
+                    size_t numberLen = JSONNumberLength(fd);
+                    int number = 0;
+                    JSONParseNumber(fd, &number, numberLen);
+                    if (c == '-') {
+                        number = -number;
+                    }
+                    obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                    obj->pairs[pairIndex].value.value.number = number;
+                }
             } break;
         }
     }
@@ -213,6 +245,18 @@ static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
     }
 
     buffer[bufferLen] = '\0';
+}
+
+
+static void JSONParseNumber(FILE* fd, int* number, const size_t bufferSize) {
+    int result = 0;
+    for (size_t i = 0; i < bufferSize; i++) {
+        int c = fgetc(fd);
+        if (c < '0' || c > '9') break;
+        int digit = c - '0';
+        result = result * 10 + digit;
+    }
+    *number = result;
 }
 
 
