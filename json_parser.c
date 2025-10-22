@@ -117,7 +117,7 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
     if (obj->count == 0)
         obj->pairs = malloc(sizeof(JSONPair));
     else {
-        obj->pairs = realloc(obj->pairs, obj->count + 1);
+        obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (obj->count + 1));
     }
 
     for (;;) {
