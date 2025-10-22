@@ -26,20 +26,9 @@ int JSONParse(const char* path, JSONObject* obj) {
 
     int c = fgetc(fd);
     if (c == '{') {
-        JSONParseObject(fd, obj);
-        // for (int i = 0; i < obj->count; i++){
-        //     JSONPair *pair = &obj->pairs[i];
-        //     printf("pair %d: \n", i);
-        //     printf("key: %s\n", pair->key);
-        //     switch (pair->value.type) {
-        //         case JSON_VALUE_STRING  : printf("value: %s\n\n", pair->value.value.string); break;
-        //         case JSON_VALUE_NUMBER  : printf("value: %f\n\n", pair->value.value.number); break;;
-        //         case JSON_VALUE_OBJECT  : break;
-        //         case JSON_VALUE_ARRAY   : break;
-        //         case JSON_VALUE_BOOL    : printf("value: %d\n\n", pair->value.value.boolean); break;
-        //         case JSON_VALUE_NULL    : printf("value: null\n\n"); break;
-        //     }
-        // }
+        ungetc(c, fd);
+        if (!JSONParseObject(fd, obj))
+            return -1;
         printf("{\n");
         JSONPrintObject(obj, 1);
         printf("}\n");
@@ -114,7 +103,10 @@ static size_t JSONNumberLength(FILE* fd) {
 
 
 static bool JSONParseObject(FILE* fd, JSONObject* obj) {
-    int c;
+    int c = fgetc(fd);
+
+    if (c != '{')
+        return false;
 
     bool inValue = false;
 
@@ -169,6 +161,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // Object
             case '{' : {
+                ungetc(c, fd);
                 JSONObject newObj = {};
                 if (!JSONParseObject(fd, &newObj))
                     return false;
