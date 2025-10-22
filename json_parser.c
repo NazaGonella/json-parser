@@ -10,6 +10,7 @@ static size_t JSONStringLength(FILE* fd);   // does not care for escape sequence
 static size_t JSONNumberLength(FILE* fd);
 static bool JSONParseObject(FILE* fd, JSONObject* obj);
 static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
+static bool JSONParseNumber(FILE* fd, double* number);
 static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
@@ -162,6 +163,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // Object
             case '{' : {
                 ungetc(c, fd);
+
                 JSONObject newObj = {};
                 if (!JSONParseObject(fd, &newObj))
                     return false;
@@ -177,6 +179,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // true
             case 't' : {
                 ungetc(c, fd);
+
                 if (!JSONParseBoolean(fd, true))
                     return false;
 
@@ -187,6 +190,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // false
             case 'f' : {
                 ungetc(c, fd);
+
                 if (!JSONParseBoolean(fd, false))
                     return false;
 
@@ -197,6 +201,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // null
             case 'n' : {
                 ungetc(c, fd);
+
                 if (!JSONParseNull(fd))
                     return false;
 
@@ -214,36 +219,14 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             } break;
             
             default: {
-                // Number
-                if (c == '-' || (c >= '0' && c <= '9')) {
-                    double result = 0;
+                ungetc(c, fd);
 
-                    bool isNegative = false;
-                    if (c == '-') {
-                        isNegative = true;
-                    } else {
-                        ungetc(c, fd);
-                    }
+                double result = 0;
 
-                    int integer = 0;
-                    int integerLen = JSONNumberLength(fd);
-                    JSONParseInteger(fd, &integer, integerLen);
+                JSONParseNumber(fd, &result);
 
-                    result += (double) integer;
-
-                    double fractionary = 0;
-                    int peek = fgetc(fd);
-                    if (peek != '.') {
-                        ungetc(peek, fd);
-                    } else {
-                        int fractionaryLen = JSONNumberLength(fd);
-                        JSONParseFraction(fd, &fractionary, fractionaryLen);
-                        result += fractionary;
-                    }
-
-                    obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
-                    obj->pairs[pairIndex].value.value.number = isNegative ? -result : result;
-                }
+                obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
+                obj->pairs[pairIndex].value.value.number = result;
             } break;
         }
     }
@@ -288,6 +271,42 @@ static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
 
     buffer[bufferLen] = '\0';
     return false;
+}
+
+
+static bool JSONParseNumber(FILE* fd, double* number) {
+    int c = fgetc(fd);
+    if ( !(c == '-' || (c >= '0' && c <= '9')) )
+        return false;
+
+    double result = 0;
+    bool isNegative = false;
+
+    if (c == '-') {
+        isNegative = true;
+    } else {
+        ungetc(c, fd);
+    }
+
+    int integer = 0;
+    int integerLen = JSONNumberLength(fd);
+    JSONParseInteger(fd, &integer, integerLen);
+
+    result += (double) integer;
+
+    double fractionary = 0;
+    int peek = fgetc(fd);
+    if (peek != '.') {
+        ungetc(peek, fd);
+    } else {
+        int fractionaryLen = JSONNumberLength(fd);
+        JSONParseFraction(fd, &fractionary, fractionaryLen);
+        result += fractionary;
+    }
+
+    *number = isNegative ? -result : result;
+
+    return true;
 }
 
 
