@@ -8,7 +8,7 @@
 static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static size_t JSONNumberLength(FILE* fd);
-static void JSONParseObject(FILE* fd, JSONObject* obj);
+static bool JSONParseObject(FILE* fd, JSONObject* obj);
 static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
 static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
@@ -77,7 +77,10 @@ static size_t JSONStringLength(FILE* fd) {
     size_t bufferLen = 0;
     int c = fgetc(fd);
 
-    if (c != '"') return -1;
+    if (c != '"') {
+        fseek(fd, pos, SEEK_SET);
+        return 0;
+    }
 
 
     while ((c = fgetc(fd)) != EOF) {
@@ -110,7 +113,7 @@ static size_t JSONNumberLength(FILE* fd) {
 }
 
 
-static void JSONParseObject(FILE* fd, JSONObject* obj) {
+static bool JSONParseObject(FILE* fd, JSONObject* obj) {
     int c;
 
     bool inValue = false;
@@ -136,20 +139,25 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
                 } else {
                     obj->count = pairIndex + 1;
                 }
-            } return;
+            } return true;
 
             case EOF: {
 
-            } return;
+            } return false;
 
             // String
             case '"': {
                 ungetc(c, fd);
 
                 size_t bufferSize = JSONStringLength(fd);
+                if (bufferSize == 0) {
+                    return false;
+                }
                 char buffer[bufferSize+1];  // +1 for null terminator
 
-                JSONParseString(fd, buffer, bufferSize+1);
+                if (!JSONParseString(fd, buffer, bufferSize+1)) {
+                    return false;
+                }
 
                 if (inValue) {
                     obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
