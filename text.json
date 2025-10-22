@@ -17,5 +17,8 @@
             "ea" : -0.99131
         }
     },
-    "ea" : "pririr"
+    "ea" : "pririr",
+    "booled" : false,
+    "ui" : 2,
+    "booled2" : true
 }

@@ -170,9 +170,8 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // Object
             case '{' : {
                 JSONObject newObj = {};
-                if (!JSONParseObject(fd, &newObj)) {
+                if (!JSONParseObject(fd, &newObj))
                     return false;
-                }
                 obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
                 obj->pairs[pairIndex].value.value.object = newObj;
             } break;
@@ -184,7 +183,9 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // true
             case 't' : {
-                JSONParseBoolean(fd, true);
+                ungetc(c, fd);
+                if (!JSONParseBoolean(fd, true))
+                    return false;
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_BOOL;
                 obj->pairs[pairIndex].value.value.boolean = true;
@@ -192,7 +193,9 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // false
             case 'f' : {
-                JSONParseBoolean(fd, true);
+                ungetc(c, fd);
+                if (!JSONParseBoolean(fd, false))
+                    return false;
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_BOOL;
                 obj->pairs[pairIndex].value.value.boolean = false;
@@ -201,7 +204,8 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // null
             case 'n' : {
                 ungetc(c, fd);
-                JSONParseNull(fd);
+                if (!JSONParseNull(fd))
+                    return false;
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_NULL;
             } break;
@@ -324,11 +328,13 @@ static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize)
 
 static bool JSONParseBoolean(FILE* fd, bool value) {
     if (value == true) {
+        if (fgetc(fd) != 't') return false;
         if (fgetc(fd) != 'r') return false;
         if (fgetc(fd) != 'u') return false;
         if (fgetc(fd) != 'e') return false;
         return true;
     } else if (value == false) {
+        if (fgetc(fd) != 'f') return false;
         if (fgetc(fd) != 'a') return false;
         if (fgetc(fd) != 'l') return false;
         if (fgetc(fd) != 's') return false;
