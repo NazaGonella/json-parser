@@ -170,7 +170,9 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             // Object
             case '{' : {
                 JSONObject newObj = {};
-                JSONParseObject(fd, &newObj);
+                if (!JSONParseObject(fd, &newObj)) {
+                    return false;
+                }
                 obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
                 obj->pairs[pairIndex].value.value.object = newObj;
             } break;
@@ -255,7 +257,7 @@ static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
 
     if (c != '"') return false;
 
-    int bufferLen = 0;
+    size_t bufferLen = 0;
     bool escape = false;
 
     while ((c = fgetc(fd)) != EOF) {
@@ -320,8 +322,6 @@ static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize)
 
 
 static bool JSONParseBoolean(FILE* fd, bool value) {
-    int c;
-
     if (value == true) {
         if (fgetc(fd) != 'r') return false;
         if (fgetc(fd) != 'u') return false;
@@ -339,8 +339,6 @@ static bool JSONParseBoolean(FILE* fd, bool value) {
 
 
 static bool JSONParseNull(FILE* fd) {
-    int c;
-
     if (fgetc(fd) != 'u') return false;
     if (fgetc(fd) != 'l') return false;
     if (fgetc(fd) != 'l') return false;
@@ -350,7 +348,7 @@ static bool JSONParseNull(FILE* fd) {
 
 
 static void JSONPrintObject(JSONObject* obj, int indent) {
-    for (int i = 0; i < obj->count; i++) {
+    for (size_t i = 0; i < obj->count; i++) {
         for (int j = 0; j < indent; j++) printf("  ");
         JSONPair* pair = &obj->pairs[i];
         printf("\"%s\": ", pair->key);
