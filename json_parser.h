@@ -32,10 +32,10 @@ struct JSONArray {
 struct JSONValue {
     JSONValueType type;
     union value {
-        const char* string;
+        char* string;
         double number;
-        JSONObject object;
-        JSONArray array;
+        JSONObject* object;
+        JSONArray* array;
         int boolean;
     } value;
 };

@@ -1,102 +1,79 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include "json_parser.h"
 
-void test_empty_object() {
+void test_parse_empty_object() {
     JSONObject obj;
-    if (!JSONParse("test_empty_object.json", &obj)) {
-        printf("test_empty_object: FAILED (parse error)\n");
-        return;
-    }
-    if (obj.count != 0) {
-        printf("test_empty_object: FAILED (count != 0)\n");
-    } else {
-        printf("test_empty_object: PASSED\n");
-    }
-    free(obj.pairs);
+    int result = JSONParse("test_empty_object.json", &obj);
+    assert(result == 1);
+    assert(obj.count == 0);
 }
 
-void test_simple_object() {
+void test_parse_simple_object() {
     JSONObject obj;
-    if (!JSONParse("test_simple_object.json", &obj)) {
-        printf("test_simple_object: FAILED (parse error)\n");
-        return;
-    }
-
-    int found_name = 0, found_age = 0;
-    for (size_t i = 0; i < obj.count; i++) {
-        JSONPair *p = &obj.pairs[i];
-        if (strcmp(p->key, "name") == 0 && p->value.type == JSON_VALUE_STRING &&
-            strcmp(p->value.value.string, "Alice") == 0)
-            found_name = 1;
-        if (strcmp(p->key, "age") == 0 && p->value.type == JSON_VALUE_NUMBER &&
-            p->value.value.number == 30)
-            found_age = 1;
-    }
-
-    if (found_name && found_age) {
-        printf("test_simple_object: PASSED\n");
-    } else {
-        printf("test_simple_object: FAILED (values mismatch)\n");
-    }
-
-    for (size_t i = 0; i < obj.count; i++) {
-        free(obj.pairs[i].key);
-        if (obj.pairs[i].value.type == JSON_VALUE_STRING)
-            free((char*)obj.pairs[i].value.value.string);
-    }
-    free(obj.pairs);
+    int result = JSONParse("test_simple_object.json", &obj);
+    assert(result == 1);
+    assert(obj.count == 2);
+    assert(strcmp(obj.pairs[0].key, "name") == 0);
+    assert(obj.pairs[0].value.type == JSON_VALUE_STRING);
+    assert(strcmp(obj.pairs[0].value.value.string, "Alice") == 0);
+    assert(strcmp(obj.pairs[1].key, "age") == 0);
+    assert(obj.pairs[1].value.type == JSON_VALUE_NUMBER);
+    assert(obj.pairs[1].value.value.number == 30);
 }
 
-void test_nested_object() {
+void test_parse_nested_object() {
     JSONObject obj;
-    if (!JSONParse("test_nested_object.json", &obj)) {
-        printf("test_nested_object: FAILED (parse error)\n");
-        return;
-    }
+    int result = JSONParse("test_nested_object.json", &obj);
+    JSONPrintObject(&obj, 0);
+    printf("obj.count: %d\n", (int) obj.count);
+    assert(result == 1);
+    assert(obj.count == 1);
+    assert(strcmp(obj.pairs[0].key, "person") == 0);
+    assert(obj.pairs[0].value.type == JSON_VALUE_OBJECT);
+    JSONObject* nested = obj.pairs[0].value.value.object;
+    assert(nested->count == 2);
+    assert(strcmp(nested->pairs[0].key, "first") == 0);
+    assert(nested->pairs[0].value.type == JSON_VALUE_STRING);
+    assert(strcmp(nested->pairs[0].value.value.string, "Alice") == 0);
+    assert(strcmp(nested->pairs[1].key, "last") == 0);
+    assert(nested->pairs[1].value.type == JSON_VALUE_STRING);
+    assert(strcmp(nested->pairs[1].value.value.string, "Smith") == 0);
+}
 
-    int found_address = 0;
-    for (size_t i = 0; i < obj.count; i++) {
-        JSONPair *p = &obj.pairs[i];
-        if (strcmp(p->key, "address") == 0 && p->value.type == JSON_VALUE_OBJECT) {
-            JSONObject addr = p->value.value.object;
-            if (addr.count == 2) found_address = 1;
-        }
-    }
+void test_parse_array() {
+    JSONObject obj;
+    int result = JSONParse("test_array.json", &obj);
+    assert(result == 1);
+    assert(obj.count == 1);
+    assert(strcmp(obj.pairs[0].key, "numbers") == 0);
+    assert(obj.pairs[0].value.type == JSON_VALUE_ARRAY);
+    JSONArray* array = obj.pairs[0].value.value.array;
+    assert(array->count == 3);
+    assert(array->values[0].type == JSON_VALUE_NUMBER && array->values[0].value.number == 1);
+    assert(array->values[1].type == JSON_VALUE_NUMBER && array->values[1].value.number == 2);
+    assert(array->values[2].type == JSON_VALUE_NUMBER && array->values[2].value.number == 3);
+}
 
-    if (found_address) {
-        printf("test_nested_object: PASSED\n");
-    } else {
-        printf("test_nested_object: FAILED (nested object mismatch)\n");
-    }
-
-    // Free memory: recursive free needed for nested objects
-    for (size_t i = 0; i < obj.count; i++) {
-        free(obj.pairs[i].key);
-        if (obj.pairs[i].value.type == JSON_VALUE_STRING)
-            free((char*)obj.pairs[i].value.value.string);
-        else if (obj.pairs[i].value.type == JSON_VALUE_OBJECT) {
-            JSONObject nested = obj.pairs[i].value.value.object;
-            for (size_t j = 0; j < nested.count; j++) {
-                free(nested.pairs[j].key);
-                if (nested.pairs[j].value.type == JSON_VALUE_STRING)
-                    free((char*)nested.pairs[j].value.value.string);
-            }
-            free(nested.pairs);
-        }
-    }
-    free(obj.pairs);
+void test_parse_bool_and_null() {
+    JSONObject obj;
+    int result = JSONParse("test_bool_null.json", &obj);
+    assert(result == 1);
+    assert(obj.count == 2);
+    assert(strcmp(obj.pairs[0].key, "active") == 0);
+    assert(obj.pairs[0].value.type == JSON_VALUE_BOOL);
+    assert(obj.pairs[0].value.value.boolean == 1);
+    assert(strcmp(obj.pairs[1].key, "data") == 0);
+    assert(obj.pairs[1].value.type == JSON_VALUE_NULL);
 }
 
 int main() {
-    // JSONObject obj = {};
-    // JSONParse("test_nested_object.json", &obj);
-    // printf("{\n");
-    // JSONPrintObject(&obj, 1);
-    // printf("}\n");
-    // test_empty_object();
-    test_nested_object();
-    test_simple_object();
+    test_parse_empty_object();
+    test_parse_simple_object();
+    test_parse_nested_object();
+    test_parse_array();
+    test_parse_bool_and_null();
+    printf("All JSON parser tests passed.\n");
     return 0;
 }

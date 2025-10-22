@@ -165,8 +165,8 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             case '{' : {
                 ungetc(c, fd);
 
-                JSONObject newObj = {};
-                if (!JSONParseObject(fd, &newObj))
+                JSONObject* newObj = malloc(sizeof(JSONObject));
+                if (!JSONParseObject(fd, newObj))
                     return false;
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
@@ -177,8 +177,8 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             case '[' : {
                 ungetc(c, fd);
 
-                JSONArray newArray = {};
-                if (!JSONParseArray(fd, &newArray))
+                JSONArray* newArray = malloc(sizeof(JSONArray));
+                if (!JSONParseArray(fd, newArray))
                     return false;
                 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_ARRAY;
@@ -299,7 +299,7 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                     return false;
 
                 array->values[index].type = JSON_VALUE_OBJECT;
-                array->values[index].value.object = newObj;
+                array->values[index].value.object = &newObj;
             } break;
 
             // Array
@@ -312,7 +312,7 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                 
                 assigned = true;
                 array->values[index].type = JSON_VALUE_ARRAY;
-                array->values[index].value.array = newArray;
+                array->values[index].value.array = &newArray;
             } break;
 
             // true
@@ -532,12 +532,12 @@ void JSONPrintObject(JSONObject* obj, int indent) {
                 break;
             case JSON_VALUE_OBJECT:
                 printf("{\n");
-                JSONPrintObject(&pair->value.value.object, indent + 1);
+                JSONPrintObject(pair->value.value.object, indent + 1);
                 for (int j = 0; j < indent; j++) printf("  ");
                 printf("}");
                 break;
             case JSON_VALUE_ARRAY:
-                JSONPrintArray(&pair->value.value.array, indent + 1);
+                JSONPrintArray(pair->value.value.array, indent + 1);
                 break;
             default:
                 printf("<?>");
@@ -572,12 +572,12 @@ void JSONPrintArray(JSONArray* array, int indent) {
                 break;
             case JSON_VALUE_OBJECT:
                 printf("{\n");
-                JSONPrintObject(&val->value.object, indent + 1);
+                JSONPrintObject(val->value.object, indent + 1);
                 for (int j = 0; j < indent; j++) printf("  ");
                 printf("}");
                 break;
             case JSON_VALUE_ARRAY:
-                JSONPrintArray(&val->value.array, indent + 1);
+                JSONPrintArray(val->value.array, indent + 1);
                 break;
             default:
                 printf("<?>");
