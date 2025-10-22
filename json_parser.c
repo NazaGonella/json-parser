@@ -9,7 +9,7 @@ static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static size_t JSONNumberLength(FILE* fd);
 static void JSONParseObject(FILE* fd, JSONObject* obj);
-static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
+static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
 static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
@@ -75,7 +75,10 @@ static size_t JSONStringLength(FILE* fd) {
     long pos = ftell(fd);           // save position
 
     size_t bufferLen = 0;
-    int c;
+    int c = fgetc(fd);
+
+    if (c != '"') return -1;
+
 
     while ((c = fgetc(fd)) != EOF) {
         if (c == '"') {
@@ -141,6 +144,8 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // String
             case '"': {
+                ungetc(c, fd);
+
                 size_t bufferSize = JSONStringLength(fd);
                 char buffer[bufferSize+1];  // +1 for null terminator
 
@@ -237,8 +242,10 @@ static void JSONParseObject(FILE* fd, JSONObject* obj) {
 }
 
 
-static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
-    int c;
+static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
+    int c = fgetc(fd);
+
+    if (c != '"') return false;
 
     int bufferLen = 0;
     bool escape = false;
@@ -246,7 +253,7 @@ static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
     while ((c = fgetc(fd)) != EOF) {
         if (c == '"' && !escape) {
             buffer[bufferLen] = '\0';
-            return;
+            return true;
         }
 
 
@@ -272,6 +279,7 @@ static void JSONParseString(FILE* fd, char* buffer, const size_t bufferSize) {
     }
 
     buffer[bufferLen] = '\0';
+    return false;
 }
 
 
