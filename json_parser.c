@@ -200,6 +200,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
             // null
             case 'n' : {
+                ungetc(c, fd);
                 JSONParseNull(fd);
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_NULL;
@@ -339,6 +340,7 @@ static bool JSONParseBoolean(FILE* fd, bool value) {
 
 
 static bool JSONParseNull(FILE* fd) {
+    if (fgetc(fd) != 'n') return false;
     if (fgetc(fd) != 'u') return false;
     if (fgetc(fd) != 'l') return false;
     if (fgetc(fd) != 'l') return false;
