@@ -16,14 +16,12 @@ static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
-static void JSONPrintObject(JSONObject* obj, int indent);
-static void JSONPrintArray(JSONArray* array, int indent);
 
 
 int JSONParse(const char* path, JSONObject* obj) {
     FILE *fd = fopen(path, "r");
 
-    if (!fd) return -1;
+    if (!fd) return 0;
 
     SkipWhitespace(fd);
 
@@ -31,19 +29,19 @@ int JSONParse(const char* path, JSONObject* obj) {
     if (c == '{') {
         ungetc(c, fd);
         if (!JSONParseObject(fd, obj))
-            return -1;
-        printf("{\n");
-        JSONPrintObject(obj, 1);
-        printf("}\n");
+            return 0;
+        // printf("{\n");
+        // JSONPrintObject(obj, 1);
+        // printf("}\n");
 
     }
     else {
         fclose(fd);
-        return -1;
+        return 0;
     }
 
     fclose(fd);
-    return 0;
+    return 1;
 }
 
 
@@ -513,7 +511,7 @@ static bool JSONParseNull(FILE* fd) {
 }
 
 
-static void JSONPrintObject(JSONObject* obj, int indent) {
+void JSONPrintObject(JSONObject* obj, int indent) {
     for (size_t i = 0; i < obj->count; i++) {
         for (int j = 0; j < indent; j++) printf("  ");
         JSONPair* pair = &obj->pairs[i];
@@ -553,7 +551,7 @@ static void JSONPrintObject(JSONObject* obj, int indent) {
 }
 
 
-static void JSONPrintArray(JSONArray* array, int indent) {
+void JSONPrintArray(JSONArray* array, int indent) {
     printf("[\n");
     for (size_t i = 0; i < array->count; i++) {
         for (int j = 0; j < indent; j++) printf("  ");
