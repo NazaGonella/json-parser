@@ -9,6 +9,7 @@ static void SkipWhitespace(FILE* fd);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static size_t JSONNumberLength(FILE* fd);
 static bool JSONParseObject(FILE* fd, JSONObject* obj);
+static bool JSONParseArray(FILE *fd, JSONArray* array);
 static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
 static bool JSONParseNumber(FILE* fd, double* number);
 static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
@@ -16,6 +17,7 @@ static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize)
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
 static void JSONPrintObject(JSONObject* obj, int indent);
+static void JSONPrintArray(JSONArray* array, int indent);
 
 
 int JSONParse(const char* path, JSONObject* obj) {
@@ -129,6 +131,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 if (pairIndex == 0 && obj->pairs[0].key == NULL) {
                     free(obj->pairs);
                     obj->pairs = NULL;
+                    obj->count = 0;
                 } else {
                     obj->count = pairIndex + 1;
                 }
@@ -167,13 +170,21 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 JSONObject newObj = {};
                 if (!JSONParseObject(fd, &newObj))
                     return false;
+
                 obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
                 obj->pairs[pairIndex].value.value.object = newObj;
             } break;
 
             // Array
             case '[' : {
+                ungetc(c, fd);
 
+                JSONArray newArray = {};
+                if (!JSONParseArray(fd, &newArray))
+                    return false;
+                
+                obj->pairs[pairIndex].value.type = JSON_VALUE_ARRAY;
+                obj->pairs[pairIndex].value.value.array = newArray;
             } break;
 
             // true
@@ -218,18 +229,153 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 inValue = false;
             } break;
             
+            // Number
             default: {
                 ungetc(c, fd);
 
                 double result = 0;
 
-                JSONParseNumber(fd, &result);
+                if (!JSONParseNumber(fd, &result))
+                    return false;
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_NUMBER;
                 obj->pairs[pairIndex].value.value.number = result;
             } break;
         }
     }
+
+    return false;
+}
+
+
+static bool JSONParseArray(FILE *fd, JSONArray* array) {
+    int c = fgetc(fd);
+
+    if (c != '[') return false;
+
+    int index = 0;
+    bool assigned = false;
+
+    array->values = malloc(sizeof(JSONValue));
+
+    for (;;) {
+        SkipWhitespace(fd);
+        c = fgetc(fd);
+
+        switch (c) {
+            case ']': {
+                if (!assigned) {
+                    free(array->values);
+                    array->values = NULL;
+                    array->count = 0;
+                } else {
+                    array->count = index + 1;
+                }
+            } return true;
+
+            // String
+            case '"': {
+                ungetc(c, fd);
+
+                size_t bufferSize = JSONStringLength(fd);
+                if (bufferSize == 0) {
+                    return false;
+                }
+                char buffer[bufferSize+1];  // +1 for null terminator
+
+                if (!JSONParseString(fd, buffer, bufferSize+1)) {
+                    return false;
+                }
+
+                assigned = true;
+                array->values[index].type = JSON_VALUE_STRING;
+                array->values[index].value.string = strdup(buffer);
+            } break;
+
+            // Object
+            case '{' : {
+                ungetc(c, fd);
+
+                JSONObject newObj = {};
+                if (!JSONParseObject(fd, &newObj))
+                    return false;
+
+                array->values[index].type = JSON_VALUE_OBJECT;
+                array->values[index].value.object = newObj;
+            } break;
+
+            // Array
+            case '[' : {
+                ungetc(c, fd);
+
+                JSONArray newArray = {};
+                if (!JSONParseArray(fd, &newArray))
+                    return false;
+                
+                assigned = true;
+                array->values[index].type = JSON_VALUE_ARRAY;
+                array->values[index].value.array = newArray;
+            } break;
+
+            // true
+            case 't' : {
+                ungetc(c, fd);
+
+                if (!JSONParseBoolean(fd, true))
+                    return false;
+
+                assigned = true;
+                array->values[index].type = JSON_VALUE_BOOL;
+                array->values[index].value.boolean = true;
+            } break;
+
+            // false
+            case 'f' : {
+                ungetc(c, fd);
+
+                if (!JSONParseBoolean(fd, false))
+                    return false;
+
+                assigned = true;
+                array->values[index].type = JSON_VALUE_BOOL;
+                array->values[index].value.boolean = false;
+            } break;
+
+            // null
+            case 'n' : {
+                ungetc(c, fd);
+
+                if (!JSONParseNull(fd))
+                    return false;
+
+                assigned = true;
+                array->values[index].type = JSON_VALUE_NULL;
+            } break;
+            
+            case ',': {
+                index++;
+
+                assigned = true;
+                array->values = realloc(array->values, sizeof(JSONValue) * (index + 1));
+            } break;
+            
+            // Number
+            default: {
+                ungetc(c, fd);
+
+                double result = 0;
+
+                if (!JSONParseNumber(fd, &result))
+                    return false;
+
+                assigned = true;
+                array->values[index].type = JSON_VALUE_NUMBER;
+                array->values[index].value.number = result;
+            } break;
+        }
+    }
+
+    return false;
 }
 
 
@@ -392,6 +538,9 @@ static void JSONPrintObject(JSONObject* obj, int indent) {
                 for (int j = 0; j < indent; j++) printf("  ");
                 printf("}");
                 break;
+            case JSON_VALUE_ARRAY:
+                JSONPrintArray(&pair->value.value.array, indent + 1);
+                break;
             default:
                 printf("<?>");
                 break;
@@ -401,4 +550,46 @@ static void JSONPrintObject(JSONObject* obj, int indent) {
             printf(",");
         printf("\n");
     }
+}
+
+
+static void JSONPrintArray(JSONArray* array, int indent) {
+    printf("[\n");
+    for (size_t i = 0; i < array->count; i++) {
+        for (int j = 0; j < indent; j++) printf("  ");
+        JSONValue* val = &array->values[i];
+
+        switch (val->type) {
+            case JSON_VALUE_STRING:
+                printf("\"%s\"", val->value.string);
+                break;
+            case JSON_VALUE_NUMBER:
+                printf("%g", val->value.number);
+                break;
+            case JSON_VALUE_BOOL:
+                printf(val->value.boolean ? "true" : "false");
+                break;
+            case JSON_VALUE_NULL:
+                printf("null");
+                break;
+            case JSON_VALUE_OBJECT:
+                printf("{\n");
+                JSONPrintObject(&val->value.object, indent + 1);
+                for (int j = 0; j < indent; j++) printf("  ");
+                printf("}");
+                break;
+            case JSON_VALUE_ARRAY:
+                JSONPrintArray(&val->value.array, indent + 1);
+                break;
+            default:
+                printf("<?>");
+                break;
+        }
+
+        if (i < array->count - 1)
+            printf(",");
+        printf("\n");
+    }
+    for (int j = 0; j < indent - 1; j++) printf("  ");
+    printf("]");
 }

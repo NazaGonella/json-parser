@@ -15,7 +15,13 @@
             "upa" : null,
             "esa" : 0.4446,
             "ea" : -0.99131
-        }
+        },
+        "arraya" : [
+            null,
+            223,
+            0.34,
+            false
+        ]
     },
     "ea" : "pririr",
     "booled" : false,
