@@ -93,6 +93,7 @@ static size_t JSONNumberLength(FILE* fd) {
 
     while ((c = fgetc(fd)) != EOF) {
         if (c == '.'|| c == ']' || c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
+            ungetc(c, fd);
             break;
         }
         bufferLen++;
