@@ -92,7 +92,7 @@ static size_t JSONNumberLength(FILE* fd) {
     int c;
 
     while ((c = fgetc(fd)) != EOF) {
-        if (c == '.' || c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
+        if (c == '.'|| c == ']' || c == ',' || c == '}' || c == '\t' || c == '\n' || c == '\r' || c == ' ') {
             break;
         }
         bufferLen++;
@@ -111,13 +111,13 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
     bool inValue = false;
 
-    int pairIndex = obj->count;
+    int pairIndex = 0;
 
-    if (obj->count == 0)
-        obj->pairs = malloc(sizeof(JSONPair));
-    else {
-        obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (obj->count + 1));
-    }
+    // if (obj->count == 0)
+    obj->pairs = malloc(sizeof(JSONPair));
+    // else {
+    //     obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (obj->count + 1));
+    // }
 
     for (;;) {
         SkipWhitespace(fd);

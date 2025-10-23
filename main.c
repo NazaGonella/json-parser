@@ -26,8 +26,6 @@ void test_parse_simple_object() {
 void test_parse_nested_object() {
     JSONObject obj;
     int result = JSONParse("test_nested_object.json", &obj);
-    JSONPrintObject(&obj, 0);
-    printf("obj.count: %d\n", (int) obj.count);
     assert(result == 1);
     assert(obj.count == 1);
     assert(strcmp(obj.pairs[0].key, "person") == 0);
@@ -45,6 +43,8 @@ void test_parse_nested_object() {
 void test_parse_array() {
     JSONObject obj;
     int result = JSONParse("test_array.json", &obj);
+    // JSONPrintObject(&obj, 0);
+    // printf("obj.count: %d\n", (int) obj.count);
     assert(result == 1);
     assert(obj.count == 1);
     assert(strcmp(obj.pairs[0].key, "numbers") == 0);
