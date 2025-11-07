@@ -30,9 +30,6 @@ int JSONParse(const char* path, JSONObject* obj) {
         ungetc(c, fd);
         if (!JSONParseObject(fd, obj))
             return 0;
-        // printf("{\n");
-        // JSONPrintObject(obj, 1);
-        // printf("}\n");
 
     }
     else {
@@ -509,86 +506,4 @@ static bool JSONParseNull(FILE* fd) {
     if (fgetc(fd) != 'l') return false;
 
     return true;
-}
-
-
-void JSONPrintObject(JSONObject* obj, int indent) {
-    for (size_t i = 0; i < obj->count; i++) {
-        for (int j = 0; j < indent; j++) printf("  ");
-        JSONPair* pair = &obj->pairs[i];
-        printf("\"%s\": ", pair->key);
-
-        switch (pair->value.type) {
-            case JSON_VALUE_STRING:
-                printf("\"%s\"", pair->value.value.string);
-                break;
-            case JSON_VALUE_NUMBER:
-                printf("%g", pair->value.value.number);
-                break;
-            case JSON_VALUE_BOOL:
-                printf(pair->value.value.boolean ? "true" : "false");
-                break;
-            case JSON_VALUE_NULL:
-                printf("null");
-                break;
-            case JSON_VALUE_OBJECT:
-                printf("{\n");
-                JSONPrintObject(pair->value.value.object, indent + 1);
-                for (int j = 0; j < indent; j++) printf("  ");
-                printf("}");
-                break;
-            case JSON_VALUE_ARRAY:
-                JSONPrintArray(pair->value.value.array, indent + 1);
-                break;
-            default:
-                printf("<?>");
-                break;
-        }
-
-        if (i < obj->count - 1)
-            printf(",");
-        printf("\n");
-    }
-}
-
-
-void JSONPrintArray(JSONArray* array, int indent) {
-    printf("[\n");
-    for (size_t i = 0; i < array->count; i++) {
-        for (int j = 0; j < indent; j++) printf("  ");
-        JSONValue* val = &array->values[i];
-
-        switch (val->type) {
-            case JSON_VALUE_STRING:
-                printf("\"%s\"", val->value.string);
-                break;
-            case JSON_VALUE_NUMBER:
-                printf("%g", val->value.number);
-                break;
-            case JSON_VALUE_BOOL:
-                printf(val->value.boolean ? "true" : "false");
-                break;
-            case JSON_VALUE_NULL:
-                printf("null");
-                break;
-            case JSON_VALUE_OBJECT:
-                printf("{\n");
-                JSONPrintObject(val->value.object, indent + 1);
-                for (int j = 0; j < indent; j++) printf("  ");
-                printf("}");
-                break;
-            case JSON_VALUE_ARRAY:
-                JSONPrintArray(val->value.array, indent + 1);
-                break;
-            default:
-                printf("<?>");
-                break;
-        }
-
-        if (i < array->count - 1)
-            printf(",");
-        printf("\n");
-    }
-    for (int j = 0; j < indent - 1; j++) printf("  ");
-    printf("]");
 }
