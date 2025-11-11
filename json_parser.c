@@ -111,11 +111,7 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
     int pairIndex = 0;
 
-    // if (obj->count == 0)
     obj->pairs = malloc(sizeof(JSONPair));
-    // else {
-    //     obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (obj->count + 1));
-    // }
 
     for (;;) {
         SkipWhitespace(fd);
@@ -292,25 +288,25 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
             case '{' : {
                 ungetc(c, fd);
 
-                JSONObject newObj = {};
-                if (!JSONParseObject(fd, &newObj))
+                JSONObject* newObj = malloc(sizeof(JSONObject));
+                if (!JSONParseObject(fd, newObj))
                     return false;
 
                 array->values[index].type = JSON_VALUE_OBJECT;
-                array->values[index].value.object = &newObj;
+                array->values[index].value.object = newObj;
             } break;
 
             // Array
             case '[' : {
                 ungetc(c, fd);
 
-                JSONArray newArray = {};
-                if (!JSONParseArray(fd, &newArray))
+                JSONArray* newArray = malloc(sizeof(JSONArray));
+                if (!JSONParseArray(fd, newArray))
                     return false;
                 
                 assigned = true;
                 array->values[index].type = JSON_VALUE_ARRAY;
-                array->values[index].value.array = &newArray;
+                array->values[index].value.array = newArray;
             } break;
 
             // true
@@ -506,4 +502,105 @@ static bool JSONParseNull(FILE* fd) {
     if (fgetc(fd) != 'l') return false;
 
     return true;
+}
+
+
+void JSONPrintObject(JSONObject* obj, int indent) {
+    // for (int i = 0; i < indent; i++) printf(" ");
+
+    printf("{\n");
+
+    for (size_t i = 0; i < obj->count; i++) {
+        JSONPair* pair = &obj->pairs[i];
+        for (int j = 0; j < indent + INDENT_LEN; j++) printf(" ");
+        printf("\"%s\" : ", pair->key);
+        switch (pair->value.type) {
+
+            case JSON_VALUE_STRING: {
+                printf("\"%s\"", pair->value.value.string);
+            } break;
+
+            case JSON_VALUE_BOOL: {
+                printf("%s", pair->value.value.boolean ? "true" : "false");
+            } break;
+
+            case JSON_VALUE_ARRAY: {
+                JSONPrintArray(pair->value.value.array, indent + INDENT_LEN);
+            } break;
+
+            case JSON_VALUE_NULL: {
+                printf("null");
+            } break;
+
+            case JSON_VALUE_NUMBER: {
+                double num = pair->value.value.number;
+                if (num == (int) num)
+                    printf("%d", (int) pair->value.value.number);
+                else
+                    printf("%.15g", pair->value.value.number);
+            } break;
+
+            case JSON_VALUE_OBJECT: {
+                JSONPrintObject(pair->value.value.object, indent + INDENT_LEN);
+            } break;
+
+        }
+
+        if (i != obj->count - 1) printf(",");
+
+        printf("\n");
+    }
+
+    for (int i = 0; i < indent; i++) printf(" ");
+
+    printf("}");
+}
+
+
+void JSONPrintArray(JSONArray* array, int indent) {
+
+    printf("[\n");
+
+    for (size_t i = 0; i < array->count; i++) {
+        for (int j = 0; j < indent + INDENT_LEN; j++) printf(" ");
+        switch (array->values[i].type) {
+
+            case JSON_VALUE_STRING: {
+                printf("\"%s\"", array->values[i].value.string);
+            } break;
+
+            case JSON_VALUE_BOOL: {
+                printf("%s", array->values[i].value.boolean ? "true" : "false");
+            } break;
+
+            case JSON_VALUE_ARRAY: {
+                JSONPrintArray(array->values[i].value.array, indent + INDENT_LEN);
+            } break;
+
+            case JSON_VALUE_NULL: {
+                printf("null");
+            } break;
+
+            case JSON_VALUE_NUMBER: {
+                double num = array->values[i].value.number;
+                if (num == (int) num)
+                    printf("%d", (int) num);
+                else
+                    printf("%.15g", num);
+            } break;
+
+            case JSON_VALUE_OBJECT: {
+                JSONPrintObject(array->values[i].value.object, indent + INDENT_LEN);
+            } break;
+
+        }
+
+        if (i != array->count - 1) printf(",");
+
+        printf("\n");
+    }
+
+    for (int i = 0; i < indent; i++) printf(" ");
+
+    printf("]");
 }

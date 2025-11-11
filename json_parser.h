@@ -1,6 +1,9 @@
 #include <stdio.h>
 
 
+#define INDENT_LEN          2
+
+
 typedef enum JSONValueType {
     JSON_VALUE_STRING,
     JSON_VALUE_NUMBER,

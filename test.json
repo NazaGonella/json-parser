@@ -1,0 +1,12 @@
+{
+    "hola" : "hola",
+    "chau" : true,
+    "eu" : "oajwdiaowijd",
+    "obj" : {
+        "aia" : null,
+        "num" : 2,
+        "num2" : 5.4
+    },
+    "more" : 1.209835098,
+    "arrayo" : ["hola", 3, 4.5, 9, 10, {"hola" : true, "ijoedioj" : [3,4.432,4324,true,null, {"AWOIHDAOWIHO" : null}]}]
+}
