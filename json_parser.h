@@ -52,4 +52,3 @@ struct JSONPair {
 
 int JSONParse(const char* path, JSONObject* obj);
 void JSONPrintObject(JSONObject* obj, int indent);
-void JSONPrintArray(JSONArray* array, int indent);

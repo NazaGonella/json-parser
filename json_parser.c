@@ -5,9 +5,15 @@
 #include <string.h>
 
 
+// Rudimentary Lexer
 static void SkipWhitespace(FILE* fd);
+
+// Helper functions
+static void JSONPrintArray(JSONArray* array, int indent);
 static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
 static size_t JSONNumberLength(FILE* fd);
+
+// Reads fd and parses it into JSONObject
 static bool JSONParseObject(FILE* fd, JSONObject* obj);
 static bool JSONParseArray(FILE *fd, JSONArray* array);
 static bool JSONParseString(FILE* fd, char* buffer, const size_t bufferSize);
@@ -506,14 +512,15 @@ static bool JSONParseNull(FILE* fd) {
 
 
 void JSONPrintObject(JSONObject* obj, int indent) {
-    // for (int i = 0; i < indent; i++) printf(" ");
-
     printf("{\n");
 
     for (size_t i = 0; i < obj->count; i++) {
         JSONPair* pair = &obj->pairs[i];
+
         for (int j = 0; j < indent + INDENT_LEN; j++) printf(" ");
+
         printf("\"%s\" : ", pair->key);
+
         switch (pair->value.type) {
 
             case JSON_VALUE_STRING: {
@@ -557,12 +564,13 @@ void JSONPrintObject(JSONObject* obj, int indent) {
 }
 
 
-void JSONPrintArray(JSONArray* array, int indent) {
-
+static void JSONPrintArray(JSONArray* array, int indent) {
     printf("[\n");
 
     for (size_t i = 0; i < array->count; i++) {
+
         for (int j = 0; j < indent + INDENT_LEN; j++) printf(" ");
+
         switch (array->values[i].type) {
 
             case JSON_VALUE_STRING: {
