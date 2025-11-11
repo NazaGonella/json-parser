@@ -1,5 +1,6 @@
-#include <assert.h>
+#include <stdio.h>
 #include "json_parser.h"
+
 
 int main() {
     JSONObject obj = {};
