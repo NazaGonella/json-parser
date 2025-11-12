@@ -50,5 +50,6 @@ struct JSONPair {
 };
 
 
-int JSONParse(const char* path, JSONObject* obj);
-void JSONPrintObject(JSONObject* obj, int indent);
+int JSONParse(const char* path, JSONObject* obj);   // defined in json_parser.c
+int JSONDestroyObject(JSONObject* obj);             // defined in json_parser.c
+void JSONPrintObject(JSONObject* obj, int indent);  // defined in json_printer.c

@@ -1,0 +1,21 @@
+{
+    "awijodojwd" : 2,
+    "hola" : [
+        "hola",
+        {
+            "key" : true,
+            "key2" : false
+        }
+    ],
+    "array" : [
+        {
+            "obj1" : [
+                1,
+                2,
+                3
+            ]
+        },
+        "random",
+        null
+    ]
+}

@@ -21,29 +21,95 @@ static void JSONParseInteger(FILE* fd, int* number, const size_t bufferSize);
 static void JSONParseFraction(FILE* fd, double* number, const size_t bufferSize);
 static bool JSONParseBoolean(FILE* fd, bool value); // returns true if the parse is valid
 static bool JSONParseNull(FILE* fd); // returns true if the parse is valid
+static int JSONDestroyValue(JSONValue* value);
+static int JSONDestroyArray(JSONArray* array);
 
 
 int JSONParse(const char* path, JSONObject* obj) {
     FILE *fd = fopen(path, "r");
 
-    if (!fd) return 0;
+    if (!fd) return 1;
 
     SkipWhitespace(fd);
 
     int c = fgetc(fd);
     if (c == '{') {
         ungetc(c, fd);
-        if (!JSONParseObject(fd, obj))
-            return 0;
-
+        if (!JSONParseObject(fd, obj)) {
+            JSONDestroyObject(obj);
+            fclose(fd);
+            return 1;
+        }
     }
     else {
         fclose(fd);
-        return 0;
+        return 1;
     }
 
     fclose(fd);
-    return 1;
+    return 0;
+}
+
+
+int JSONDestroyObject(JSONObject* obj) {
+    if (!obj) return 1;
+
+    for (size_t i = 0; i < obj->count; i++) {
+        free(obj->pairs[i].key);
+        JSONDestroyValue(&obj->pairs[i].value);
+    }
+    free(obj->pairs);
+
+    obj->pairs = NULL;
+    obj->count = 0;
+
+    return 0;
+}
+
+
+static int JSONDestroyArray(JSONArray* array) {
+    if (!array) return 1;
+    
+    for (size_t i = 0; i < array->count; i++) {
+        JSONValue* value = &array->values[i];
+        JSONDestroyValue(value);
+    }
+    free(array->values);
+
+    return 0;
+}
+
+
+static int JSONDestroyValue(JSONValue* value) {
+    if (!value) return 1;
+
+    switch (value->type) {
+
+        case JSON_VALUE_STRING: {
+            free(value->value.string);
+        } break;
+
+        case JSON_VALUE_BOOL: {
+        } break;
+
+        case JSON_VALUE_ARRAY: {
+            JSONDestroyArray(value->value.array);
+            value->value.array = NULL;
+        } break;
+
+        case JSON_VALUE_NULL: {
+        } break;
+
+        case JSON_VALUE_NUMBER: {
+        } break;
+
+        case JSON_VALUE_OBJECT: {
+            JSONDestroyObject(value->value.object);
+            value->value.object = NULL;
+        } break;
+    }
+
+    return 0;
 }
 
 
@@ -116,7 +182,10 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
 
     int pairIndex = 0;
 
-    obj->pairs = malloc(sizeof(JSONPair));
+    JSONPair* tmp = calloc(1, sizeof(JSONPair));
+    if (!tmp)
+        return false;
+    obj->pairs = tmp;
 
     for (;;) {
         SkipWhitespace(fd);
@@ -155,8 +224,14 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 if (inValue) {
                     obj->pairs[pairIndex].value.type = JSON_VALUE_STRING;
                     obj->pairs[pairIndex].value.value.string = strdup(buffer);
+
+                    if (!obj->pairs[pairIndex].value.value.string)
+                        return false;
                 } else {
                     obj->pairs[pairIndex].key = strdup(buffer);
+
+                    if (!obj->pairs[pairIndex].key)
+                        return false;
                 }
             } break;
 
@@ -165,8 +240,13 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 ungetc(c, fd);
 
                 JSONObject* newObj = malloc(sizeof(JSONObject));
-                if (!JSONParseObject(fd, newObj))
+                if (!newObj)
                     return false;
+
+                if (!JSONParseObject(fd, newObj)) {
+                    free(newObj);
+                    return false;
+                }
 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_OBJECT;
                 obj->pairs[pairIndex].value.value.object = newObj;
@@ -177,8 +257,13 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
                 ungetc(c, fd);
 
                 JSONArray* newArray = malloc(sizeof(JSONArray));
-                if (!JSONParseArray(fd, newArray))
+                if (!newArray)
                     return false;
+
+                if (!JSONParseArray(fd, newArray)) {
+                    free(newArray);
+                    return false;
+                }
                 
                 obj->pairs[pairIndex].value.type = JSON_VALUE_ARRAY;
                 obj->pairs[pairIndex].value.value.array = newArray;
@@ -221,9 +306,13 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             } break;
             
             case ',': {
-                pairIndex++;
-                obj->pairs = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
+                JSONPair* tmp = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
+                if (!tmp)
+                    return false;
+                obj->pairs = tmp;
+
                 inValue = false;
+                pairIndex++;
             } break;
             
             // Number
@@ -253,7 +342,10 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
     int index = 0;
     bool assigned = false;
 
-    array->values = malloc(sizeof(JSONValue));
+    JSONValue* tmp = malloc(sizeof(JSONValue));
+    if (!tmp)
+        return false;
+    array->values = tmp;
 
     for (;;) {
         SkipWhitespace(fd);
@@ -287,6 +379,9 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                 assigned = true;
                 array->values[index].type = JSON_VALUE_STRING;
                 array->values[index].value.string = strdup(buffer);
+
+                if (!array->values[index].value.string)
+                    return false;
             } break;
 
             // Object
@@ -294,6 +389,9 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                 ungetc(c, fd);
 
                 JSONObject* newObj = malloc(sizeof(JSONObject));
+                if (!newObj)
+                    return false;
+
                 if (!JSONParseObject(fd, newObj))
                     return false;
 
@@ -306,6 +404,9 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                 ungetc(c, fd);
 
                 JSONArray* newArray = malloc(sizeof(JSONArray));
+                if (!newArray)
+                    return false;
+
                 if (!JSONParseArray(fd, newArray))
                     return false;
                 
@@ -350,10 +451,13 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
             } break;
             
             case ',': {
-                index++;
+                JSONValue* tmp = realloc(array->values, sizeof(JSONValue) * (index + 1));
+                if (!tmp)
+                    return false;
+                array->values = tmp;
 
                 assigned = true;
-                array->values = realloc(array->values, sizeof(JSONValue) * (index + 1));
+                index++;
             } break;
             
             // Number
