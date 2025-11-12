@@ -411,6 +411,7 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
                 if (!JSONParseObject(fd, newObj))
                     return false;
 
+                assigned = true;
                 array->values[index].type = JSON_VALUE_OBJECT;
                 array->values[index].value.object = newObj;
             } break;
