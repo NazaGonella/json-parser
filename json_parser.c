@@ -10,7 +10,7 @@
 static void SkipWhitespace(FILE* fd);
 
 // Helper functions
-static size_t JSONStringLength(FILE* fd);   // does not care for escape sequences, so results in slightly larger buffers
+static size_t JSONStringLength(FILE* fd);
 static size_t JSONNumberLength(FILE* fd);
 
 // Reads fd and parses it into JSONObject
@@ -143,16 +143,17 @@ static size_t JSONStringLength(FILE* fd) {
     int c = fgetc(fd);
 
     if (c != '"') {
-        fseek(fd, pos, SEEK_SET);
+        fseek(fd, pos, SEEK_SET);   // restore position
         return 0;
     }
 
-
+    bool escape = false;
     while ((c = fgetc(fd)) != EOF) {
-        if (c == '"') {
+        if (c == '"' && !escape) {
             break;
         }
         bufferLen++;
+        escape = (c == '\\') ? !escape : false;
     }
 
     fseek(fd, pos, SEEK_SET);       // restore position

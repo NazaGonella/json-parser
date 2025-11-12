@@ -1,15 +1,11 @@
 {
-    "only_whitespace": " ok ",
-    "escaped_quotes": "\"quoted\"",
-    "escaped_backslash": "\\\\",
-    "leading_zero": 0,
-    "negative_integer": -7,
-    "fraction_only": 0.25,
-    "nested": {
-        "level1": {
-            "level2": {
-                "arr": ["a","b",{"deep": null}]
-            }
-        }
-    }
+    "message": "Hello \"world\"\\nLine2 and backslash \\\\",
+    "number": -123.456,
+    "integer": 42,
+    "flag_true": true,
+    "flag_false": false,
+    "null_value": null,
+    "array": [1, 2.5, "text", false, {"nested": "ok"}],
+    "empty_object": {},
+    "empty_array": []
 }
