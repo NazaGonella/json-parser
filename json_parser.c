@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 #include "json_parser.h"
 
@@ -76,6 +77,8 @@ static int JSONDestroyArray(JSONArray* array) {
     }
     free(array->values);
 
+    array->count = 0;
+
     return 0;
 }
 
@@ -94,7 +97,9 @@ static int JSONDestroyValue(JSONValue* value) {
 
         case JSON_VALUE_ARRAY: {
             JSONDestroyArray(value->value.array);
+            free(value->value.array);
             value->value.array = NULL;
+            value->type = JSON_VALUE_NULL;
         } break;
 
         case JSON_VALUE_NULL: {
@@ -105,7 +110,9 @@ static int JSONDestroyValue(JSONValue* value) {
 
         case JSON_VALUE_OBJECT: {
             JSONDestroyObject(value->value.object);
+            free(value->value.object);
             value->value.object = NULL;
+            value->type = JSON_VALUE_NULL;
         } break;
     }
 
@@ -306,13 +313,15 @@ static bool JSONParseObject(FILE* fd, JSONObject* obj) {
             } break;
             
             case ',': {
+                pairIndex++;
                 JSONPair* tmp = realloc(obj->pairs, sizeof(JSONPair) * (pairIndex + 1));
-                if (!tmp)
+                if (!tmp) {
+                    pairIndex--;
                     return false;
+                }
                 obj->pairs = tmp;
 
                 inValue = false;
-                pairIndex++;
             } break;
             
             // Number
@@ -451,13 +460,15 @@ static bool JSONParseArray(FILE *fd, JSONArray* array) {
             } break;
             
             case ',': {
+                index++;
                 JSONValue* tmp = realloc(array->values, sizeof(JSONValue) * (index + 1));
-                if (!tmp)
+                if (!tmp) {
+                    index--;
                     return false;
+                }
                 array->values = tmp;
 
                 assigned = true;
-                index++;
             } break;
             
             // Number

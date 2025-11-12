@@ -7,5 +7,6 @@ int main() {
     JSONParse("test.json", &obj);
     JSONPrintObject(&obj, 0);
     printf("\n");
+    JSONDestroyObject(&obj);
     return 0;
 }
