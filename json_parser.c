@@ -139,7 +139,7 @@ static void SkipWhitespace(FILE* fd) {
 static size_t JSONStringLength(FILE* fd) {
     long pos = ftell(fd);           // save position
 
-    size_t bufferLen = 0;
+    size_t len = 0;
     int c = fgetc(fd);
 
     if (c != '"') {
@@ -149,15 +149,21 @@ static size_t JSONStringLength(FILE* fd) {
 
     bool escape = false;
     while ((c = fgetc(fd)) != EOF) {
-        if (c == '"' && !escape) {
-            break;
+        if (!escape) {
+            if (c == '"') break;
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+            len++;
+        } else {
+            len++;
+            escape = false;
         }
-        bufferLen++;
-        escape = (c == '\\') ? !escape : false;
     }
 
     fseek(fd, pos, SEEK_SET);       // restore position
-    return bufferLen;
+    return len;
 }
 
 
